@@ -576,9 +576,10 @@ async function generateQuestions(){
   const topicCtx=text?`Topic: """${text.substring(0,1800)}"""`:`Generate from your knowledge about ${selSubject} for ${eL[cls]||cls}.`;
   const prompt=`Expert Indian exam question generator.\nExam: ${examCtx}\n${selSubject?'Subject: '+selSubject:''}\nDifficulty: ${diffM[diff]}\nLanguage: ${langM[lang]}\n${topicCtx}\nGenerate: ${typeI[qType]}\nRespond ONLY JSON no markdown:\n{"questions":[{"type":"mcq","question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A) ..."},{"type":"short","question":"...","options":[],"answer":"..."}]}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})});
+    const res=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
     const data=await res.json();
-    const raw=data.content.map(i=>i.text||'').join('');
+    if(data.error) throw new Error(data.error);
+    const raw=data.text||'';
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
     lastQ=parsed.questions;
     saveHistory(parsed.questions,lastMeta);
