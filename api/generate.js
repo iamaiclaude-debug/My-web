@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
     if (!prompt) return res.status(400).json({ error: 'Prompt required' });
 
     const apiKey = process.env.GOOGLE_AI_KEY;
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-pro:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: 'POST',
