@@ -576,16 +576,27 @@ async function generateQuestions(){
   const topicCtx=text?`Topic: """${text.substring(0,1800)}"""`:`Generate from your knowledge about ${selSubject} for ${eL[cls]||cls}.`;
   const prompt=`Expert Indian exam question generator.\nExam: ${examCtx}\n${selSubject?'Subject: '+selSubject:''}\nDifficulty: ${diffM[diff]}\nLanguage: ${langM[lang]}\n${topicCtx}\nGenerate: ${typeI[qType]}\nRespond ONLY JSON no markdown:\n{"questions":[{"type":"mcq","question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A) ..."},{"type":"short","question":"...","options":[],"answer":"..."}]}`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,messages:[{role:'user',content:prompt}]})});
+    const apiKey=localStorage.getItem('examai_gkey')||'';
+    if(!apiKey){
+      out.innerHTML='<div class="err-box" style="text-align:center"><div style="font-size:18px;margin-bottom:12px">⚙️ API Key Setup</div><p style="margin-bottom:12px;font-size:14px">Pehli baar Google AI key daalni hogi — bilkul free!</p><p style="font-size:13px;color:var(--text2);margin-bottom:16px">1. <b>aistudio.google.com</b> kholein<br>2. Get API Key → Create API Key<br>3. Neeche paste karein</p><input type="password" id="keyInput" placeholder="AIzaSy... yahan paste karo" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:14px;margin-bottom:10px"><br><button onclick="saveGKey()" style="width:100%;padding:12px;border-radius:8px;background:var(--accent);color:white;border:none;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px">Key Save Karo ✓</button><p style="font-size:11px;color:var(--text3);margin-top:8px">🔒 Key sirf aapke browser mein save hogi</p></div>';
+      btn.disabled=false; bt.textContent='Sawaal Banao ↗';
+      return;
+    }
+    const geminiUrl='https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+apiKey;
+    const res=await fetch(geminiUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:3000}})});
     const data=await res.json();
-    const raw=data.content.map(i=>i.text||'').join('');
+    if(data.error) throw new Error(data.error.message);
+    const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
     lastQ=parsed.questions;
     saveHistory(parsed.questions,lastMeta);
     renderQ(parsed.questions);
     renderHistGrid();
   }catch(e){
-    out.innerHTML=`<div class="err-box">Kuch galat ho gaya. Dobara try karo.<br><small>${e.message}</small></div>`;
+    let msg='Kuch galat ho gaya. Dobara try karo.';
+    if(e.message.includes('quota')||e.message.includes('limit')) msg='Daily limit khatam! Kal dobara try karo ya nayi key banao — aistudio.google.com';
+    if(e.message.includes('API_KEY')||e.message.includes('401')){localStorage.removeItem('examai_gkey');msg='API Key galat hai! Page reload karo aur nayi key daalo.';}
+    out.innerHTML='<div class="err-box">'+msg+'<br><small style="opacity:0.6">'+e.message+'</small></div>';
   }
   btn.disabled=false; bt.textContent='Sawaal Banao ↗';
 }
@@ -716,6 +727,15 @@ function copyAll(){
     return s;
   }).join('\n\n');
   navigator.clipboard.writeText(lines).then(()=>alert('Copy ho gaya!'));
+}
+
+// ---- Google API Key Save ----
+function saveGKey(){
+  const k=document.getElementById('keyInput').value.trim();
+  if(!k||!k.startsWith('AIza')){alert('Sahi key paste karo — AIzaSy... se shuru honi chahiye!');return;}
+  localStorage.setItem('examai_gkey',k);
+  alert('Key save ho gayi! Ab Sawaal Banao button dabao 🎉');
+  document.getElementById('outputArea').innerHTML='';
 }
 
 // ---- History ----
